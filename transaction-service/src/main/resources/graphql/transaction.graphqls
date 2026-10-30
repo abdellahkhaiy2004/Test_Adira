@@ -1,0 +1,48 @@
+# GraphQL view of the SAME operations the REST controllers expose.
+# Both call TransactionService / TransferService; no business rule is re-implemented here.
+
+type Transaction {
+    id: ID!
+    accountId: ID!
+    "String so decimal precision is never lost in transport."
+    amount: String!
+    currency: String!
+    merchantCategory: String!
+    country: String!
+    "ISO-8601 instant, e.g. 2026-01-15T10:30:00Z"
+    createdAt: String!
+}
+
+type Transfer {
+    id: ID!
+    sourceAccountId: ID!
+    destinationAccountId: ID!
+    amount: String!
+    currency: String!
+    createdAt: String!
+}
+
+type Query {
+    "Transaction history, newest first; all accounts when accountId is omitted."
+    transactions(accountId: ID): [Transaction!]!
+    transaction(id: ID!): Transaction
+    transfer(id: ID!): Transfer
+}
+
+type Mutation {
+    createTransaction(
+        accountId: ID!
+        amount: String!
+        currency: String!
+        merchantCategory: String!
+        country: String!
+    ): Transaction!
+
+    transfer(
+        sourceAccountId: ID!
+        destinationAccountId: ID!
+        amount: String!
+        currency: String!
+        country: String!
+    ): Transfer!
+}

@@ -1,0 +1,39 @@
+# GraphQL view of the SAME operations the REST controller exposes.
+# Both call AccountService; no business rule is re-implemented here.
+
+enum AccountStatus {
+    ACTIVE
+    BLOCKED
+}
+
+type Account {
+    id: ID!
+    customerReference: String!
+    status: AccountStatus!
+    currency: String!
+    "Official model keeps the balance as a double."
+    balance: Float!
+}
+
+type Query {
+    "All accounts, optionally filtered by customer reference."
+    accounts(customerReference: String): [Account!]!
+    "A single account, or null when it does not exist."
+    account(id: ID!): Account
+}
+
+type Mutation {
+    createAccount(
+        customerReference: String!
+        currency: String!
+        balance: Float
+        status: AccountStatus
+    ): Account!
+
+    updateAccountStatus(id: ID!, status: AccountStatus!): Account!
+
+    "Amounts are strings so decimal precision is never lost in transport."
+    debitAccount(id: ID!, amount: String!): Account!
+
+    creditAccount(id: ID!, amount: String!): Account!
+}

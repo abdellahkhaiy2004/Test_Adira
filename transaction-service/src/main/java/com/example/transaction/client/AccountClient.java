@@ -11,7 +11,9 @@ import java.util.UUID;
 
 /**
  * Remote view of account-service. All business rules about balances live there; this is only transport.
- * The {@code url} is a temporary direct address until Eureka discovery is enabled (Part 3).
+ *
+ * <p>{@code bank.account-service.url} is empty by default, which makes Feign resolve the instance through
+ * Eureka by service name. Giving it a value pins the client to that host (the tests do this).
  */
 @FeignClient(name = "account-service", url = "${bank.account-service.url}",
         configuration = AccountClientConfiguration.class, fallbackFactory = AccountClientFallbackFactory.class)
