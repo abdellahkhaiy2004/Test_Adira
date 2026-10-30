@@ -35,3 +35,10 @@ build/
 # Ignore architecture and planning folder
 architecture et plan/
 
+### Python fraud detection ###
+fraud-detection/.venv/
+fraud-detection/__pycache__/
+*.pyc
+# Generated dry-run data; never commit it as if it were the real dataset
+fraud-detection/bank_transactions_SYNTHETIC.csv
+

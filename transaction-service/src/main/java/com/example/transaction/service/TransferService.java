@@ -5,6 +5,7 @@ import com.example.transaction.client.AccountClient.AccountView;
 import com.example.transaction.client.AccountClient.AmountRequest;
 import com.example.transaction.domain.Transaction;
 import com.example.transaction.domain.Transfer;
+import com.example.transaction.event.TransactionEventPublisher;
 import com.example.transaction.repository.TransactionRepository;
 import com.example.transaction.repository.TransferRepository;
 import com.example.transaction.service.TransactionRejectedException.Reason;
@@ -14,6 +15,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,6 +31,7 @@ public class TransferService {
     private final AccountClient accountClient;
     private final TransactionRules rules;
     private final TransactionTemplate transactionTemplate;
+    private final TransactionEventPublisher eventPublisher;
 
     /**
      * Moves money between two accounts of the same currency. Debit source, credit destination, record the
@@ -51,26 +55,34 @@ public class TransferService {
         rules.requireCanReceive(destination, currency);
 
         Compensations compensations = new Compensations();
+        List<Transaction> recorded = new ArrayList<>();
+        Transfer transfer;
         try {
-            return transactionTemplate.execute(status -> {
+            transfer = transactionTemplate.execute(status -> {
                 Instant now = Instant.now();
-                Transfer transfer = transferRepository.saveAndFlush(Transfer.builder()
+                Transfer saved = transferRepository.saveAndFlush(Transfer.builder()
                         .sourceAccountId(sourceAccountId).destinationAccountId(destinationAccountId)
                         .amount(amount).currency(currency).createdAt(now).build());
-                transactionRepository.save(historyRow(sourceAccountId, amount, currency, CATEGORY_OUT, country, now));
-                transactionRepository.saveAndFlush(
-                        historyRow(destinationAccountId, amount, currency, CATEGORY_IN, country, now));
+                recorded.clear();
+                recorded.add(transactionRepository.save(
+                        historyRow(sourceAccountId, amount, currency, CATEGORY_OUT, country, now)));
+                recorded.add(transactionRepository.saveAndFlush(
+                        historyRow(destinationAccountId, amount, currency, CATEGORY_IN, country, now)));
 
                 accountClient.debit(sourceAccountId, new AmountRequest(amount));
                 compensations.add(() -> accountClient.credit(sourceAccountId, new AmountRequest(amount)));
                 accountClient.credit(destinationAccountId, new AmountRequest(amount));
                 compensations.add(() -> accountClient.debit(destinationAccountId, new AmountRequest(amount)));
-                return transfer;
+                return saved;
             });
         } catch (RuntimeException e) {
             compensations.runAll();
             throw e;
         }
+        // Only here: the local transaction committed and both balance moves succeeded. A transfer records two
+        // transactions, so it emits one event per leg, each keyed by its own accountId.
+        recorded.forEach(eventPublisher::publishCreated);
+        return transfer;
     }
 
     public Transfer getTransfer(UUID id) {

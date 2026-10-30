@@ -2,7 +2,9 @@ package com.example.transaction.web.graphql;
 
 import com.example.transaction.FakeAccountServer;
 import com.example.transaction.repository.TransactionRepository;
+import com.example.transaction.repository.TransferRepository;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,6 +43,15 @@ class TransactionGraphQlIntegrationTest {
     MockMvc mvc;
     @Autowired
     TransactionRepository transactions;
+    @Autowired
+    TransferRepository transfers;
+
+    @BeforeEach
+    void reset() {
+        ACCOUNTS.reset();
+        transactions.deleteAll();
+        transfers.deleteAll();
+    }
 
     private ResultActions graphql(String document) throws Exception {
         return mvc.perform(post("/graphql").contentType(MediaType.APPLICATION_JSON)

@@ -4,6 +4,7 @@ import com.example.transaction.client.AccountClient;
 import com.example.transaction.client.AccountClient.AccountView;
 import com.example.transaction.client.AccountClient.AmountRequest;
 import com.example.transaction.domain.Transaction;
+import com.example.transaction.event.TransactionEventPublisher;
 import com.example.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class TransactionService {
     private final AccountClient accountClient;
     private final TransactionRules rules;
     private final TransactionTemplate transactionTemplate;
+    private final TransactionEventPublisher eventPublisher;
 
     /**
      * Records a payment (debit) on an account. Sequence: validate -> consult the account and its balance ->
@@ -40,20 +42,24 @@ public class TransactionService {
         rules.requireCanPay(account, amount, currency);
 
         Compensations compensations = new Compensations();
+        Transaction saved;
         try {
-            return transactionTemplate.execute(status -> {
-                Transaction saved = transactionRepository.saveAndFlush(Transaction.builder()
+            saved = transactionTemplate.execute(status -> {
+                Transaction persisted = transactionRepository.saveAndFlush(Transaction.builder()
                         .accountId(accountId).amount(amount).currency(currency)
                         .merchantCategory(merchantCategory.trim()).country(country.trim())
                         .createdAt(Instant.now()).build());
                 accountClient.debit(accountId, new AmountRequest(amount));
                 compensations.add(() -> accountClient.credit(accountId, new AmountRequest(amount)));
-                return saved;
+                return persisted;
             });
         } catch (RuntimeException e) {
             compensations.runAll();
             throw e;
         }
+        // Only here: the local transaction committed and the debit succeeded (exam part F.1).
+        eventPublisher.publishCreated(saved);
+        return saved;
     }
 
     public Transaction getTransaction(UUID id) {
