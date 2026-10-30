@@ -1,0 +1,67 @@
+<app-page-header [title]="text.assistant.title" [subtitle]="text.assistant.subtitle">
+  <button type="button" class="btn btn--secondary" (click)="reset()">
+    {{ text.assistant.reset }}
+  </button>
+</app-page-header>
+
+<div class="layout">
+  <section>
+    <div class="thread" role="log" aria-live="polite" [attr.aria-label]="text.assistant.title">
+      @if (entries().length === 0) {
+        <p class="muted">{{ text.assistant.empty }}</p>
+      }
+
+      @for (entry of entries(); track entry.id) {
+        <div
+          class="message"
+          [class.message--user]="entry.author === 'user'"
+          [class.message--assistant]="entry.author === 'assistant'"
+          [class.message--failed]="entry.failed"
+        >
+          <span class="message__author">
+            {{ entry.author === 'user' ? text.assistant.you : text.assistant.assistant }}
+          </span>
+          {{ entry.text }}
+        </div>
+      }
+
+      @if (sending()) {
+        <p class="thinking" role="status">{{ text.assistant.thinking }}</p>
+      }
+    </div>
+
+    <form class="composer" [formGroup]="form" (ngSubmit)="send()" novalidate>
+      <div class="field">
+        <label class="sr-only" for="message">{{ text.assistant.placeholder }}</label>
+        <input
+          id="message"
+          type="text"
+          formControlName="message"
+          [placeholder]="text.assistant.placeholder"
+          autocomplete="off"
+        />
+      </div>
+      <button type="submit" class="btn" [disabled]="sending() || form.invalid">
+        {{ text.assistant.send }}
+      </button>
+    </form>
+  </section>
+
+  <aside class="card">
+    <h2>{{ text.assistant.tools }}</h2>
+
+    @if (!toolsLoaded()) {
+      <p class="muted text-sm">{{ text.common.loading }}</p>
+    } @else if (toolsError()) {
+      <p class="text-sm">{{ text.assistant.toolsUnavailable }}</p>
+    } @else if (tools().length) {
+      <ul class="tools__list">
+        @for (tool of tools(); track tool) {
+          <li>{{ tool }}</li>
+        }
+      </ul>
+    } @else {
+      <p class="text-sm">{{ text.assistant.noTools }}</p>
+    }
+  </aside>
+</div>

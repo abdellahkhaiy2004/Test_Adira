@@ -1,0 +1,134 @@
+<app-page-header [title]="text.accounts.title" [subtitle]="text.accounts.subtitle">
+  <button type="button" class="btn" (click)="toggleCreate()">
+    {{ text.accounts.create }}
+  </button>
+</app-page-header>
+
+@if (showCreate()) {
+  <form class="card create-form" [formGroup]="createForm" (ngSubmit)="create()" novalidate>
+    <h2>{{ text.accounts.createTitle }}</h2>
+
+    <div class="create-form__grid">
+      <div class="field">
+        <label for="customerReference">{{ text.accounts.reference }}</label>
+        <input
+          id="customerReference"
+          type="text"
+          formControlName="customerReference"
+          [attr.aria-invalid]="invalid('customerReference')"
+          aria-describedby="customerReference-error"
+          [placeholder]="text.accounts.filterPlaceholder"
+        />
+        @if (invalid('customerReference')) {
+          <span id="customerReference-error" class="field__error">{{ text.validation.required }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="currency">{{ text.accounts.currency }}</label>
+        <input
+          id="currency"
+          type="text"
+          formControlName="currency"
+          maxlength="3"
+          [attr.aria-invalid]="invalid('currency')"
+          aria-describedby="currency-error"
+        />
+        @if (invalid('currency')) {
+          <span id="currency-error" class="field__error">{{ text.validation.currencyFormat }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="balance">{{ text.accounts.openingBalance }}</label>
+        <input id="balance" type="number" min="0" step="0.01" formControlName="balance" />
+      </div>
+    </div>
+
+    <div class="row-actions">
+      <button type="submit" class="btn" [disabled]="creating()">
+        {{ creating() ? text.newTransaction.submitting : text.accounts.create }}
+      </button>
+      <button type="button" class="btn btn--secondary" (click)="toggleCreate()">
+        {{ text.common.cancel }}
+      </button>
+    </div>
+  </form>
+}
+
+<div class="toolbar">
+  <div class="field">
+    <label for="filter">{{ text.accounts.filterLabel }}</label>
+    <input
+      id="filter"
+      type="search"
+      #filterInput
+      [value]="filter()"
+      [placeholder]="text.accounts.filterPlaceholder"
+      (keyup.enter)="applyFilter(filterInput.value)"
+    />
+  </div>
+  <button type="button" class="btn btn--secondary" (click)="applyFilter(filterInput.value)">
+    {{ text.accounts.filter }}
+  </button>
+  @if (filter()) {
+    <button type="button" class="btn btn--secondary" (click)="filterInput.value = ''; clearFilter()">
+      {{ text.accounts.clear }}
+    </button>
+  }
+</div>
+
+<app-state-panel
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="!loading() && !error() && accounts().length === 0"
+  [emptyMessage]="text.accounts.empty"
+  (retry)="load()"
+/>
+
+@if (!loading() && !error() && accounts().length) {
+  <div class="table-wrapper">
+    <table class="table--responsive">
+      <thead>
+        <tr>
+          <th scope="col">{{ text.accounts.reference }}</th>
+          <th scope="col">{{ text.accounts.status }}</th>
+          <th scope="col">{{ text.accounts.currency }}</th>
+          <th scope="col" class="numeric">{{ text.accounts.balance }}</th>
+          <th scope="col">{{ text.accounts.actions }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (account of accounts(); track account.id) {
+          <tr>
+            <td [attr.data-label]="text.accounts.reference">{{ account.customerReference }}</td>
+            <td [attr.data-label]="text.accounts.status">
+              <app-status-badge [status]="account.status" />
+            </td>
+            <td [attr.data-label]="text.accounts.currency">{{ account.currency }}</td>
+            <td [attr.data-label]="text.accounts.balance" class="numeric">
+              {{ account.balance | money: account.currency }}
+            </td>
+            <td [attr.data-label]="text.accounts.actions">
+              <div class="row-actions">
+                <a class="btn btn--secondary" [routerLink]="['/accounts', account.id]">
+                  {{ text.accounts.details }}
+                </a>
+                <button
+                  type="button"
+                  class="btn"
+                  [class.btn--danger]="account.status === 'ACTIVE'"
+                  [class.btn--secondary]="account.status === 'BLOCKED'"
+                  [disabled]="pendingStatusId() === account.id"
+                  (click)="toggleStatus(account)"
+                >
+                  {{ account.status === 'ACTIVE' ? text.accounts.block : text.accounts.unblock }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

@@ -1,10 +1,84 @@
-HELP.md
+# ---------------------------------------------------------------------------
+# Secrets — never commit these.
+# docker-compose.yml reads OPENAI_API_KEY from the environment or a .env file.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/src/**/*.key
+secrets/
+application-local.properties
+application-local.yml
+
+# ---------------------------------------------------------------------------
+# Java / Maven
+# ---------------------------------------------------------------------------
 target/
-.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+*.jar
+# The Maven Wrapper must stay committed, or ./mvnw cannot bootstrap on a fresh clone.
+# (This project uses distributionType=only-script, so there is no jar today.)
+!.mvn/wrapper/*.jar
+*.war
+*.ear
+*.class
+# Surefire crash dumps land at the module root, outside target/
+*.dump
+*.dumpstream
+hs_err_pid*.log
+replay_pid*.log
 
-### STS ###
+# H2 files, in case a service is switched from in-memory to file storage
+*.mv.db
+*.trace.db
+*.lock.db
+
+# ---------------------------------------------------------------------------
+# Angular / Node
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+coverage/
+# Vitest / Karma output
+test-results/
+playwright-report/
+
+# ---------------------------------------------------------------------------
+# Python fraud detection
+# ---------------------------------------------------------------------------
+fraud-detection/.venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.joblib
+*.pkl
+# Generated dry-run data; never commit it as if it were the real dataset.
+# The real bank_transactions CSV IS tracked on purpose, so RESULTS.md is reproducible.
+fraud-detection/bank_transactions_SYNTHETIC.csv
+
+# ---------------------------------------------------------------------------
+# IDEs and editors
+# ---------------------------------------------------------------------------
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse / STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -13,32 +87,33 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+### VS Code ###
+.vscode/
 
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
-/dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+# ---------------------------------------------------------------------------
+# Operating system
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*~
+*.swp
 
-# Ignore architecture and planning folder
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
+# Prompts, planning notes and the examination PDF: working material, not deliverables.
+# Plan_frontend.md lives at the repository root and IS tracked, as the exam requires.
 architecture et plan/
 
-### Python fraud detection ###
-fraud-detection/.venv/
-fraud-detection/__pycache__/
-*.pyc
-# Generated dry-run data; never commit it as if it were the real dataset
-fraud-detection/bank_transactions_SYNTHETIC.csv
-
+# Ad-hoc logs
+*.log
+!**/src/**/*.log

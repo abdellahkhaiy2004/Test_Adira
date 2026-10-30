@@ -1,0 +1,169 @@
+<app-page-header [title]="text.transfers.title" [subtitle]="text.transfers.subtitle">
+  <a class="btn btn--secondary" routerLink="/dashboard">{{ text.common.back }}</a>
+</app-page-header>
+
+@if (completed(); as transfer) {
+  <div class="result" role="status">
+    <p><strong>{{ text.transfers.success }}</strong></p>
+    <p class="result__id">
+      {{ text.transfers.successDetail }} <span class="mono">{{ transfer.id }}</span>
+    </p>
+    <p>{{ transfer.amount | money: transfer.currency }}</p>
+    <div class="row-actions">
+      <button type="button" class="btn" (click)="again()">{{ text.transfers.newOne }}</button>
+      <a class="btn btn--secondary" routerLink="/transactions">{{ text.app.nav.transactions }}</a>
+    </div>
+  </div>
+}
+
+<app-state-panel [loading]="loadingAccounts()" [error]="loadError()" (retry)="loadAccounts()" />
+
+@if (!loadingAccounts() && !loadError() && !completed()) {
+  @if (accounts().length < 2) {
+    <p class="card muted">{{ text.transfers.needTwoAccounts }}</p>
+  } @else if (confirming()) {
+    <section class="card form-card" role="region" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">{{ text.transfers.confirmTitle }}</h2>
+
+      <div class="confirm">
+        <p class="confirm__line">{{ text.transfers.confirmBody }}</p>
+        <p class="confirm__amount">
+          {{ form.controls.amount.value }} {{ form.controls.currency.value }}
+        </p>
+        <p class="confirm__line">
+          {{ text.transfers.from }} <strong>{{ sourceAccount()?.customerReference }}</strong>
+        </p>
+        <p class="confirm__line">
+          {{ text.transfers.to }} <strong>{{ destinationAccount()?.customerReference }}</strong>
+        </p>
+      </div>
+
+      @if (currencyMismatch()) {
+        <p class="field__warning" role="alert">{{ text.transfers.currencyWarning }}</p>
+      }
+
+      <div class="row-actions">
+        <button type="button" class="btn" [disabled]="submitting()" (click)="execute()">
+          {{ submitting() ? text.transfers.submitting : text.transfers.execute }}
+        </button>
+        <button
+          type="button"
+          class="btn btn--secondary"
+          [disabled]="submitting()"
+          (click)="cancelConfirmation()"
+        >
+          {{ text.common.cancel }}
+        </button>
+      </div>
+    </section>
+  } @else {
+    <form class="card form-card" [formGroup]="form" (ngSubmit)="review()" novalidate>
+      @if (submitError(); as failure) {
+        <div class="alert-error" role="alert">
+          <p><strong>{{ failure.message }}</strong></p>
+          <p class="text-sm">Code : {{ failure.code }}</p>
+        </div>
+      }
+
+      <div class="field">
+        <label for="sourceAccountId">{{ text.transfers.source }}</label>
+        <select
+          id="sourceAccountId"
+          formControlName="sourceAccountId"
+          [attr.aria-invalid]="invalid('sourceAccountId')"
+          aria-describedby="sourceAccountId-error"
+        >
+          <option value="">{{ text.newTransaction.selectAccount }}</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">
+              {{ account.customerReference }} — {{ account.balance | money: account.currency }}
+            </option>
+          }
+        </select>
+        @if (invalid('sourceAccountId')) {
+          <span id="sourceAccountId-error" class="field__error">{{ errorFor('sourceAccountId') }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="destinationAccountId">{{ text.transfers.destination }}</label>
+        <select
+          id="destinationAccountId"
+          formControlName="destinationAccountId"
+          [attr.aria-invalid]="invalid('destinationAccountId')"
+          aria-describedby="destinationAccountId-error"
+        >
+          <option value="">{{ text.newTransaction.selectAccount }}</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">
+              {{ account.customerReference }} — {{ account.balance | money: account.currency }}
+            </option>
+          }
+        </select>
+        @if (invalid('destinationAccountId')) {
+          <span id="destinationAccountId-error" class="field__error">
+            {{ errorFor('destinationAccountId') }}
+          </span>
+        }
+      </div>
+
+      @if (sameAccount()) {
+        <p class="field__error" role="alert">{{ text.transfers.sameAccount }}</p>
+      }
+      @if (currencyMismatch()) {
+        <p class="field__warning" role="alert">{{ text.transfers.currencyWarning }}</p>
+      }
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="transferAmount">{{ text.transfers.amount }}</label>
+          <input
+            id="transferAmount"
+            type="text"
+            inputmode="decimal"
+            formControlName="amount"
+            [attr.aria-invalid]="invalid('amount')"
+            aria-describedby="transferAmount-error"
+          />
+          @if (invalid('amount')) {
+            <span id="transferAmount-error" class="field__error">{{ errorFor('amount') }}</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="transferCurrency">{{ text.transfers.currency }}</label>
+          <input
+            id="transferCurrency"
+            type="text"
+            maxlength="3"
+            formControlName="currency"
+            [attr.aria-invalid]="invalid('currency')"
+            aria-describedby="transferCurrency-error"
+          />
+          @if (invalid('currency')) {
+            <span id="transferCurrency-error" class="field__error">{{ errorFor('currency') }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="transferCountry">{{ text.transfers.country }}</label>
+        <input
+          id="transferCountry"
+          type="text"
+          formControlName="country"
+          [placeholder]="text.newTransaction.countryPlaceholder"
+          [attr.aria-invalid]="invalid('country')"
+          aria-describedby="transferCountry-error"
+        />
+        @if (invalid('country')) {
+          <span id="transferCountry-error" class="field__error">{{ errorFor('country') }}</span>
+        }
+      </div>
+
+      <div class="row-actions">
+        <button type="submit" class="btn">{{ text.transfers.review }}</button>
+      </div>
+    </form>
+  }
+}

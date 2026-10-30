@@ -1,0 +1,98 @@
+<app-page-header [title]="text.dashboard.title" [subtitle]="text.dashboard.subtitle" />
+
+<app-state-panel
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="false"
+  (retry)="load()"
+/>
+
+@if (!loading() && !error()) {
+  <section class="section">
+    <h2>{{ text.dashboard.quickActions }}</h2>
+    <div class="actions">
+      <a class="btn" routerLink="/transactions/new">{{ text.app.nav.newTransaction }}</a>
+      <a class="btn btn--secondary" routerLink="/transfers">{{ text.app.nav.transfers }}</a>
+      <a class="btn btn--secondary" routerLink="/assistant">{{ text.app.nav.assistant }}</a>
+    </div>
+  </section>
+
+  @if (totalsByCurrency().length) {
+    <section class="section">
+      <h2>{{ text.dashboard.totals }}</h2>
+      <div class="totals">
+        @for (total of totalsByCurrency(); track total.currency) {
+          <div class="card total">
+            <span class="total__label">{{ total.currency }}</span>
+            <span class="total__value">{{ total.total | money: total.currency }}</span>
+          </div>
+        }
+      </div>
+      <p class="text-sm muted">{{ text.dashboard.totalsHint }}</p>
+    </section>
+  }
+
+  <section class="section">
+    <div class="section__head">
+      <h2>{{ text.dashboard.accounts }}</h2>
+      <a routerLink="/accounts">{{ text.dashboard.seeAll }}</a>
+    </div>
+
+    @if (accounts().length) {
+      <div class="grid grid--2 grid--3">
+        @for (account of accounts(); track account.id) {
+          <article class="card">
+            <div class="account__top">
+              <span class="account__reference">{{ account.customerReference }}</span>
+              <app-status-badge [status]="account.status" />
+            </div>
+            <div class="account__balance">{{ account.balance | money: account.currency }}</div>
+            <div class="account__id">
+              <a [routerLink]="['/accounts', account.id]">{{ text.accounts.details }}</a>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <p class="card muted">{{ text.dashboard.noAccounts }}</p>
+    }
+  </section>
+
+  <section class="section">
+    <div class="section__head">
+      <h2>{{ text.dashboard.recentTransactions }}</h2>
+      <a routerLink="/transactions">{{ text.dashboard.seeAll }}</a>
+    </div>
+
+    @if (recent().length) {
+      <div class="table-wrapper">
+        <table class="table--responsive">
+          <thead>
+            <tr>
+              <th scope="col">{{ text.transactions.date }}</th>
+              <th scope="col">{{ text.transactions.category }}</th>
+              <th scope="col">{{ text.transactions.country }}</th>
+              <th scope="col" class="numeric">{{ text.transactions.amount }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transaction of recent(); track transaction.id) {
+              <tr>
+                <td [attr.data-label]="text.transactions.date">
+                  {{ transaction.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+                <td [attr.data-label]="text.transactions.category">{{ transaction.merchantCategory }}</td>
+                <td [attr.data-label]="text.transactions.country">{{ transaction.country }}</td>
+                <td [attr.data-label]="text.transactions.amount" class="numeric">
+                  {{ transaction.amount | money: transaction.currency }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="card muted">{{ text.dashboard.noTransactions }}</p>
+    }
+  </section>
+}

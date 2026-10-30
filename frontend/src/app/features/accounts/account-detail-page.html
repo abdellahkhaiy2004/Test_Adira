@@ -1,0 +1,66 @@
+<app-page-header [title]="text.accounts.detailTitle">
+  <a class="btn btn--secondary" routerLink="/accounts">{{ text.common.back }}</a>
+</app-page-header>
+
+<app-state-panel [loading]="loading()" [error]="error()" (retry)="load()" />
+
+@if (!loading() && !error() && account(); as current) {
+  <div class="summary">
+    <section class="card">
+      <h2>{{ text.accounts.balance }}</h2>
+      <p class="balance">{{ current.balance | money: current.currency }}</p>
+      <app-status-badge [status]="current.status" />
+    </section>
+
+    <section class="card">
+      <h2>{{ text.accounts.title }}</h2>
+      <div class="definition">
+        <span class="definition__term">{{ text.accounts.reference }}</span>
+        <span class="definition__value">{{ current.customerReference }}</span>
+      </div>
+      <div class="definition">
+        <span class="definition__term">{{ text.accounts.currency }}</span>
+        <span class="definition__value">{{ current.currency }}</span>
+      </div>
+      <div class="definition">
+        <span class="definition__term">{{ text.accounts.identifier }}</span>
+        <span class="definition__value mono">{{ current.id }}</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="section">
+    <h2>{{ text.accounts.history }}</h2>
+
+    @if (transactions().length) {
+      <div class="table-wrapper">
+        <table class="table--responsive">
+          <thead>
+            <tr>
+              <th scope="col">{{ text.transactions.date }}</th>
+              <th scope="col">{{ text.transactions.category }}</th>
+              <th scope="col">{{ text.transactions.country }}</th>
+              <th scope="col" class="numeric">{{ text.transactions.amount }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transaction of transactions(); track transaction.id) {
+              <tr>
+                <td [attr.data-label]="text.transactions.date">
+                  {{ transaction.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+                <td [attr.data-label]="text.transactions.category">{{ transaction.merchantCategory }}</td>
+                <td [attr.data-label]="text.transactions.country">{{ transaction.country }}</td>
+                <td [attr.data-label]="text.transactions.amount" class="numeric">
+                  {{ transaction.amount | money: transaction.currency }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="card muted">{{ text.transactions.empty }}</p>
+    }
+  </section>
+}

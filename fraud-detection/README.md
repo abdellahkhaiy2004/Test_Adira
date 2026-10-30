@@ -17,17 +17,19 @@ A `.venv` is already created here with pandas 3.1.0 and scikit-learn 1.9.1.
 ```
 Unix: `./.venv/bin/python fraud_detection.py --data bank_transactions.csv`
 
-## The dataset is missing
-`bank_transactions.csv` is **not** in this repository and was not supplied. Drop the real file in this
-folder and run the command above.
+## Dataset
 
-To exercise the pipeline before the real file arrives:
+The supplied dataset is `bank_transactions - bank_transactions.csv` (5 000 rows) in this folder:
+
 ```powershell
-.\.venv\Scripts\python.exe generate_sample_data.py
-.\.venv\Scripts\python.exe fraud_detection.py --data bank_transactions_SYNTHETIC.csv
+.\.venv\Scripts\python.exe fraud_detection.py --data "bank_transactions - bank_transactions.csv"
 ```
-**The synthetic numbers are invented.** They prove only that the code runs end to end. Never put them in
-the report as results of the exam dataset.
+
+**Results on it are in [`RESULTS.md`](RESULTS.md)** — real output, including the honest finding that the
+model is not good enough to deploy (average precision 0.19 against a 0.051 baseline).
+
+`generate_sample_data.py` remains for running the pipeline without the real file; its numbers are
+invented and must never be reported as results.
 
 Expected columns: `transaction_id`, `account_id`, `amount`, `hour`, `country`, `merchant_category`,
 `transactions_last_24h`, `average_amount_last_7d`, `is_fraud`.

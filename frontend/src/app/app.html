@@ -1,0 +1,60 @@
+@if (auth.isAuthenticated()) {
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" routerLink="/dashboard" (click)="closeMenu()">
+        <span class="brand__mark" aria-hidden="true">B</span>
+        <span class="brand__name">{{ text.app.shortTitle }}</span>
+      </a>
+
+      <button
+        type="button"
+        class="topbar__toggle"
+        [attr.aria-expanded]="menuOpen()"
+        aria-controls="main-nav"
+        [attr.aria-label]="text.app.nav.menu"
+        (click)="toggleMenu()"
+      >
+        <span aria-hidden="true">☰</span>
+      </button>
+
+      <nav id="main-nav" class="nav" [class.nav--open]="menuOpen()" [attr.aria-label]="text.app.nav.menu">
+        @for (link of links; track link.path) {
+          <a
+            [routerLink]="link.path"
+            routerLinkActive="nav__link--active"
+            class="nav__link"
+            (click)="closeMenu()"
+            >{{ link.label }}</a
+          >
+        }
+        <button type="button" class="nav__logout" (click)="logout()">
+          {{ text.app.nav.logout }}
+        </button>
+      </nav>
+    </div>
+  </header>
+}
+
+<div class="notifications" aria-live="polite">
+  @for (item of notifications.notifications(); track item.id) {
+    <div
+      class="notification"
+      [class.notification--error]="item.kind === 'error'"
+      [attr.role]="item.kind === 'error' ? 'alert' : 'status'"
+    >
+      <span>{{ item.message }}</span>
+      <button
+        type="button"
+        class="notification__close"
+        [attr.aria-label]="text.common.close"
+        (click)="notifications.dismiss(item.id)"
+      >
+        ×
+      </button>
+    </div>
+  }
+</div>
+
+<main class="content" [class.content--bare]="!auth.isAuthenticated()">
+  <router-outlet />
+</main>

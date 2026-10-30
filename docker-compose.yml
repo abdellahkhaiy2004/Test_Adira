@@ -1,0 +1,195 @@
+# Local stack: infrastructure, the business services, Kafka, the assistant and the frontend.
+#
+#   docker compose up -d --build
+#   docker compose logs -f transaction-service
+#   docker compose down -v
+#
+# NOT VERIFIED: Docker is not installed on the development machine used for this project, so this
+# file has never been executed. It is written to match the modules and ports that do exist.
+
+services:
+  # ---------- infrastructure ----------
+
+  discovery-service:
+    build:
+      context: .
+      args:
+        MODULE: discovery-service
+    image: projet-adrea/discovery-service:latest
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  config-server:
+    build:
+      context: .
+      args:
+        MODULE: config-server
+    image: projet-adrea/config-server:latest
+    ports:
+      - "8888:8888"
+    environment:
+      SERVER_PORT: 8888
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  kafka:
+    image: bitnami/kafka:3.9
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft mode: no ZooKeeper needed.
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  # ---------- business services ----------
+
+  account-service:
+    build:
+      context: .
+      args:
+        MODULE: account-service
+    image: projet-adrea/account-service:latest
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  transaction-service:
+    build:
+      context: .
+      args:
+        MODULE: transaction-service
+    image: projet-adrea/transaction-service:latest
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Empty so Feign resolves account-service through Eureka and load-balances.
+      ACCOUNT_SERVICE_URL: ""
+    depends_on:
+      account-service:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  event-consumer:
+    build:
+      context: .
+      args:
+        MODULE: event-consumer
+    image: projet-adrea/event-consumer:latest
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  assistant-service:
+    build:
+      context: .
+      args:
+        MODULE: assistant-service
+    image: projet-adrea/assistant-service:latest
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      ACCOUNT_MCP_URL: http://account-service:8081
+      TRANSACTION_MCP_URL: http://transaction-service:8082
+      # Secret: supplied from the environment or a .env file, never written in this file.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in your environment or a .env file}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    depends_on:
+      transaction-service:
+        condition: service_healthy
+
+  # ---------- entry points ----------
+
+  api-gateway:
+    build:
+      context: .
+      args:
+        MODULE: api-gateway
+    image: projet-adrea/api-gateway:latest
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+    depends_on:
+      transaction-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+    image: projet-adrea/frontend:latest
+    ports:
+      - "4200:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy

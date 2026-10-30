@@ -1,0 +1,89 @@
+<app-page-header [title]="text.transactions.title" [subtitle]="text.transactions.subtitle">
+  <a class="btn" routerLink="/transactions/new">{{ text.app.nav.newTransaction }}</a>
+</app-page-header>
+
+<div class="toolbar">
+  <div class="field">
+    <label for="accountFilter">{{ text.transactions.filterByAccount }}</label>
+    <select
+      id="accountFilter"
+      [value]="selectedAccountId()"
+      (change)="onAccountChange($any($event.target).value)"
+    >
+      <option value="">{{ text.transactions.allAccounts }}</option>
+      @for (account of accounts(); track account.id) {
+        <option [value]="account.id">{{ account.customerReference }} — {{ account.currency }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+<app-state-panel
+  [loading]="loading()"
+  [error]="error()"
+  [empty]="!loading() && !error() && transactions().length === 0"
+  [emptyMessage]="text.transactions.empty"
+  (retry)="load()"
+/>
+
+@if (!loading() && !error() && transactions().length) {
+  <div class="table-wrapper">
+    <table class="table--responsive">
+      <thead>
+        <tr>
+          <th scope="col">{{ text.transactions.date }}</th>
+          <th scope="col">{{ text.transactions.account }}</th>
+          <th scope="col">{{ text.transactions.category }}</th>
+          <th scope="col">{{ text.transactions.country }}</th>
+          <th scope="col" class="numeric">{{ text.transactions.amount }}</th>
+          <th scope="col">{{ text.transactions.id }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (transaction of pageItems(); track transaction.id) {
+          <tr>
+            <td [attr.data-label]="text.transactions.date">
+              {{ transaction.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+            </td>
+            <td [attr.data-label]="text.transactions.account">
+              <a [routerLink]="['/accounts', transaction.accountId]">
+                {{ accountLabel(transaction.accountId) }}
+              </a>
+            </td>
+            <td [attr.data-label]="text.transactions.category">
+              {{ transaction.merchantCategory }}
+              @if (legLabel(transaction); as leg) {
+                <div class="leg">{{ leg }}</div>
+              }
+            </td>
+            <td [attr.data-label]="text.transactions.country">{{ transaction.country }}</td>
+            <td [attr.data-label]="text.transactions.amount" class="numeric">
+              {{ transaction.amount | money: transaction.currency }}
+            </td>
+            <td [attr.data-label]="text.transactions.id" class="mono">{{ transaction.id }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <p class="text-sm muted">{{ text.transactions.paginationHint }}</p>
+    <div class="row-actions">
+      <button type="button" class="btn btn--secondary" [disabled]="page() === 1" (click)="previous()">
+        {{ text.common.previous }}
+      </button>
+      <span aria-live="polite">
+        {{ text.common.page }} {{ page() }} {{ text.common.of }} {{ totalPages() }}
+      </span>
+      <button
+        type="button"
+        class="btn btn--secondary"
+        [disabled]="page() === totalPages()"
+        (click)="next()"
+      >
+        {{ text.common.next }}
+      </button>
+    </div>
+  </div>
+}

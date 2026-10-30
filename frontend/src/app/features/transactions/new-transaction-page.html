@@ -1,0 +1,135 @@
+<app-page-header [title]="text.newTransaction.title" [subtitle]="text.newTransaction.subtitle">
+  <a class="btn btn--secondary" routerLink="/transactions">{{ text.common.back }}</a>
+</app-page-header>
+
+@if (created(); as transaction) {
+  <div class="result" role="status">
+    <p><strong>{{ text.newTransaction.success }}</strong></p>
+    <p class="result__id">
+      {{ text.newTransaction.successDetail }}
+      <span class="mono">{{ transaction.id }}</span>
+    </p>
+    <p>{{ transaction.amount | money: transaction.currency }} — {{ transaction.merchantCategory }}</p>
+    <div class="row-actions">
+      <button type="button" class="btn" (click)="again()">{{ text.newTransaction.newOne }}</button>
+      <a class="btn btn--secondary" [routerLink]="['/accounts', transaction.accountId]">
+        {{ text.accounts.details }}
+      </a>
+    </div>
+  </div>
+}
+
+<app-state-panel [loading]="loadingAccounts()" [error]="loadError()" (retry)="loadAccounts()" />
+
+@if (!loadingAccounts() && !loadError()) {
+  @if (accounts().length === 0) {
+    <p class="card muted">{{ text.newTransaction.noAccounts }}</p>
+  } @else if (!created()) {
+    <form class="card form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (submitError(); as failure) {
+        <div class="alert-error" role="alert">
+          <p><strong>{{ failure.message }}</strong></p>
+          <p class="text-sm">Code : {{ failure.code }}</p>
+        </div>
+      }
+
+      <div class="field">
+        <label for="accountId">{{ text.newTransaction.account }}</label>
+        <select
+          id="accountId"
+          formControlName="accountId"
+          [attr.aria-invalid]="invalid('accountId')"
+          aria-describedby="accountId-error"
+        >
+          <option value="">{{ text.newTransaction.selectAccount }}</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">
+              {{ account.customerReference }} — {{ account.balance | money: account.currency }}
+            </option>
+          }
+        </select>
+        @if (invalid('accountId')) {
+          <span id="accountId-error" class="field__error">{{ errorFor('accountId') }}</span>
+        }
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="amount">{{ text.newTransaction.amount }}</label>
+          <input
+            id="amount"
+            type="text"
+            inputmode="decimal"
+            formControlName="amount"
+            [attr.aria-invalid]="invalid('amount')"
+            aria-describedby="amount-error"
+          />
+          @if (invalid('amount')) {
+            <span id="amount-error" class="field__error">{{ errorFor('amount') }}</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="currency">{{ text.newTransaction.currency }}</label>
+          <input
+            id="currency"
+            type="text"
+            maxlength="3"
+            formControlName="currency"
+            [attr.aria-invalid]="invalid('currency')"
+            aria-describedby="currency-error"
+          />
+          @if (invalid('currency')) {
+            <span id="currency-error" class="field__error">{{ errorFor('currency') }}</span>
+          }
+        </div>
+      </div>
+
+      @if (currencyMismatch()) {
+        <p class="field__warning" role="alert">{{ text.newTransaction.currencyWarning }}</p>
+      }
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="merchantCategory">{{ text.newTransaction.category }}</label>
+          <input
+            id="merchantCategory"
+            type="text"
+            formControlName="merchantCategory"
+            [placeholder]="text.newTransaction.categoryPlaceholder"
+            [attr.aria-invalid]="invalid('merchantCategory')"
+            aria-describedby="merchantCategory-error"
+          />
+          @if (invalid('merchantCategory')) {
+            <span id="merchantCategory-error" class="field__error">
+              {{ errorFor('merchantCategory') }}
+            </span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="country">{{ text.newTransaction.country }}</label>
+          <input
+            id="country"
+            type="text"
+            formControlName="country"
+            [placeholder]="text.newTransaction.countryPlaceholder"
+            [attr.aria-invalid]="invalid('country')"
+            aria-describedby="country-error"
+          />
+          @if (invalid('country')) {
+            <span id="country-error" class="field__error">{{ errorFor('country') }}</span>
+          }
+        </div>
+      </div>
+
+      <p class="field__hint">{{ text.newTransaction.rulesNote }}</p>
+
+      <div class="row-actions">
+        <button type="submit" class="btn" [disabled]="submitting()">
+          {{ submitting() ? text.newTransaction.submitting : text.newTransaction.submit }}
+        </button>
+      </div>
+    </form>
+  }
+}
