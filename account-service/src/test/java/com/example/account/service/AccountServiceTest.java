@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -80,6 +81,74 @@ class AccountServiceTest {
         Account result = service.updateStatus(id, AccountStatus.BLOCKED);
 
         assertThat(result.getStatus()).isEqualTo(AccountStatus.BLOCKED);
+    }
+
+    private Account stubLocked(UUID id, AccountStatus status, double balance) {
+        Account a = Account.builder().id(id).status(status).currency("EUR").balance(balance).build();
+        when(repository.findByIdForUpdate(id)).thenReturn(Optional.of(a));
+        return a;
+    }
+
+    @Test
+    void debitReducesBalance() {
+        UUID id = UUID.randomUUID();
+        Account a = stubLocked(id, AccountStatus.ACTIVE, 100.10);
+        when(repository.save(a)).thenReturn(a);
+
+        assertThat(service.debit(id, new BigDecimal("0.10")).getBalance()).isEqualTo(100.0);
+    }
+
+    @Test
+    void debitRejectsInsufficientFunds() {
+        UUID id = UUID.randomUUID();
+        stubLocked(id, AccountStatus.ACTIVE, 50);
+
+        assertThatThrownBy(() -> service.debit(id, new BigDecimal("50.01")))
+                .isInstanceOf(InsufficientFundsException.class);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void debitAllowsExactBalance() {
+        UUID id = UUID.randomUUID();
+        Account a = stubLocked(id, AccountStatus.ACTIVE, 50);
+        when(repository.save(a)).thenReturn(a);
+
+        assertThat(service.debit(id, new BigDecimal("50")).getBalance()).isZero();
+    }
+
+    @Test
+    void balanceOperationsRejectBlockedAccount() {
+        UUID id = UUID.randomUUID();
+        stubLocked(id, AccountStatus.BLOCKED, 50);
+
+        assertThatThrownBy(() -> service.debit(id, BigDecimal.ONE)).isInstanceOf(AccountNotActiveException.class);
+        assertThatThrownBy(() -> service.credit(id, BigDecimal.ONE)).isInstanceOf(AccountNotActiveException.class);
+    }
+
+    @Test
+    void balanceOperationsRejectNonPositiveAmount() {
+        UUID id = UUID.randomUUID();
+        assertThatThrownBy(() -> service.credit(id, BigDecimal.ZERO)).isInstanceOf(InvalidAccountException.class);
+        assertThatThrownBy(() -> service.debit(id, new BigDecimal("-1"))).isInstanceOf(InvalidAccountException.class);
+        assertThatThrownBy(() -> service.debit(id, null)).isInstanceOf(InvalidAccountException.class);
+    }
+
+    @Test
+    void creditIncreasesBalance() {
+        UUID id = UUID.randomUUID();
+        Account a = stubLocked(id, AccountStatus.ACTIVE, 10);
+        when(repository.save(a)).thenReturn(a);
+
+        assertThat(service.credit(id, new BigDecimal("5.5")).getBalance()).isEqualTo(15.5);
+    }
+
+    @Test
+    void creditUnknownAccountThrows() {
+        UUID id = UUID.randomUUID();
+        when(repository.findByIdForUpdate(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.credit(id, BigDecimal.ONE)).isInstanceOf(AccountNotFoundException.class);
     }
 
     @Test

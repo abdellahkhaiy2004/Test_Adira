@@ -73,6 +73,56 @@ class AccountControllerIntegrationTest {
     }
 
     @Test
+    void debitAndCreditUpdateBalance() throws Exception {
+        String id = createAccount("{\"customerReference\":\"C\",\"currency\":\"EUR\",\"balance\":100}");
+
+        mvc.perform(post("/api/accounts/" + id + "/debit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":30.25}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(69.75));
+        mvc.perform(post("/api/accounts/" + id + "/credit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":0.25}"))
+                .andExpect(jsonPath("$.balance").value(70.0));
+        mvc.perform(get("/api/accounts/" + id)).andExpect(jsonPath("$.balance").value(70.0));
+    }
+
+    @Test
+    void debitBeyondBalanceIs409AndLeavesBalanceUntouched() throws Exception {
+        String id = createAccount("{\"customerReference\":\"C\",\"currency\":\"EUR\",\"balance\":10}");
+
+        mvc.perform(post("/api/accounts/" + id + "/debit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":10.01}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
+        mvc.perform(get("/api/accounts/" + id)).andExpect(jsonPath("$.balance").value(10.0));
+    }
+
+    @Test
+    void balanceOperationOnBlockedAccountIs409() throws Exception {
+        String id = createAccount("{\"customerReference\":\"C\",\"currency\":\"EUR\",\"balance\":10}");
+        mvc.perform(patch("/api/accounts/" + id + "/status").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"BLOCKED\"}"));
+
+        mvc.perform(post("/api/accounts/" + id + "/credit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":1}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_ACTIVE"));
+    }
+
+    @Test
+    void balanceOperationValidationAndNotFound() throws Exception {
+        String id = createAccount("{\"customerReference\":\"C\",\"currency\":\"EUR\",\"balance\":10}");
+
+        mvc.perform(post("/api/accounts/" + id + "/debit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":0}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/accounts/" + UUID.randomUUID() + "/debit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":1}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_NOT_FOUND"));
+    }
+
+    @Test
     void unknownAccountIs404() throws Exception {
         mvc.perform(get("/api/accounts/" + UUID.randomUUID()))
                 .andExpect(status().isNotFound())

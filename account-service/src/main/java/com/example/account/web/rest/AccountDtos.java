@@ -3,6 +3,7 @@ package com.example.account.web.rest;
 import com.example.account.domain.Account;
 import com.example.account.domain.AccountStatus;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public final class AccountDtos {
@@ -17,6 +18,9 @@ public final class AccountDtos {
     public record UpdateStatusRequest(AccountStatus status) {
     }
 
+    public record BalanceOperationRequest(BigDecimal amount) {
+    }
+
     public record AccountResponse(UUID id, String customerReference, AccountStatus status, String currency,
                                   double balance) {
 
@@ -26,6 +30,7 @@ public final class AccountDtos {
         }
     }
 
-    public record ErrorResponse(int status, String error, String message) {
+    /** {@code code} is a stable machine-readable reason (used by other services). */
+    public record ErrorResponse(int status, String error, String code, String message) {
     }
 }

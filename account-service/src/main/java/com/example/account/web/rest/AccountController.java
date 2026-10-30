@@ -2,6 +2,7 @@ package com.example.account.web.rest;
 
 import com.example.account.service.AccountService;
 import com.example.account.web.rest.AccountDtos.AccountResponse;
+import com.example.account.web.rest.AccountDtos.BalanceOperationRequest;
 import com.example.account.web.rest.AccountDtos.CreateAccountRequest;
 import com.example.account.web.rest.AccountDtos.UpdateStatusRequest;
 import lombok.RequiredArgsConstructor;
@@ -46,5 +47,15 @@ public class AccountController {
     @PatchMapping("/{id}/status")
     public AccountResponse updateStatus(@PathVariable UUID id, @RequestBody UpdateStatusRequest request) {
         return AccountResponse.from(accountService.updateStatus(id, request.status()));
+    }
+
+    @PostMapping("/{id}/debit")
+    public AccountResponse debit(@PathVariable UUID id, @RequestBody BalanceOperationRequest request) {
+        return AccountResponse.from(accountService.debit(id, request.amount()));
+    }
+
+    @PostMapping("/{id}/credit")
+    public AccountResponse credit(@PathVariable UUID id, @RequestBody BalanceOperationRequest request) {
+        return AccountResponse.from(accountService.credit(id, request.amount()));
     }
 }

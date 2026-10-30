@@ -16,9 +16,10 @@
     <name>projet-adrea</name>
     <description>Banking platform - Maven reactor (parent POM)</description>
 
-    <!-- Part 1: only account-service. Other modules are added in later parts. -->
+    <!-- Parts 1-2: business services. Technical modules are added in later parts. -->
     <modules>
         <module>account-service</module>
+        <module>transaction-service</module>
     </modules>
 
     <properties>

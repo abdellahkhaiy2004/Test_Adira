@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -62,5 +63,41 @@ public class AccountService {
         Account account = getAccount(id);
         account.setStatus(status);
         return accountRepository.save(account);
+    }
+
+    /** Removes {@code amount} from the balance. Account must be ACTIVE and funds sufficient. */
+    @Transactional
+    public Account debit(UUID id, BigDecimal amount) {
+        requirePositive(amount);
+        Account account = lockActive(id);
+        BigDecimal newBalance = BigDecimal.valueOf(account.getBalance()).subtract(amount);
+        if (newBalance.signum() < 0) {
+            throw new InsufficientFundsException(id);
+        }
+        account.setBalance(newBalance.doubleValue());
+        return accountRepository.save(account);
+    }
+
+    /** Adds {@code amount} to the balance. Account must be ACTIVE. */
+    @Transactional
+    public Account credit(UUID id, BigDecimal amount) {
+        requirePositive(amount);
+        Account account = lockActive(id);
+        account.setBalance(BigDecimal.valueOf(account.getBalance()).add(amount).doubleValue());
+        return accountRepository.save(account);
+    }
+
+    private Account lockActive(UUID id) {
+        Account account = accountRepository.findByIdForUpdate(id).orElseThrow(() -> new AccountNotFoundException(id));
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccountNotActiveException(id);
+        }
+        return account;
+    }
+
+    private void requirePositive(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new InvalidAccountException("amount must be strictly positive");
+        }
     }
 }
